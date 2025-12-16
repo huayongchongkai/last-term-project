@@ -1,0 +1,105 @@
+# Spring Boot 配置
+spring:
+  application:
+    name: smart-garbage-system
+  
+  # 配置文件激活
+  profiles:
+    active: dev
+  
+  # 数据库配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/smart_garbage?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 20
+      minimum-idle: 5
+  
+  # JPA配置
+  jpa:
+    hibernate:
+      ddl-auto: update  # 开发环境用update，生产环境用validate
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+  
+  # Jackson配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+  
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+
+# 服务器配置
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+  tomcat:
+    max-connections: 10000
+    threads:
+      max: 200
+      min-spare: 10
+
+# 自定义配置
+smart-garbage:
+  # 积分规则
+  points:
+    per-correct-delivery: 10      # 每次正确投放积分
+    per-share: 5                  # 每次分享积分
+    per-feedback: 2               # 每次反馈积分
+    daily-max: 100                # 每日积分上限
+    
+  # 等级规则
+  levels:
+    - name: 普通用户
+      min-points: 0
+      max-points: 100
+    - name: 铜卡用户
+      min-points: 100
+      max-points: 500
+    - name: 银卡用户
+      min-points: 500
+      max-points: 1000
+    - name: 金卡用户
+      min-points: 1000
+      max-points: 5000
+    - name: 钻石用户
+      min-points: 5000
+      max-points: 10000
+    
+  # 第三方API配置（模拟）
+  third-party:
+    image-recognition:
+      enabled: true
+      # 实际项目中替换为真实的API地址和密钥
+      endpoint: http://localhost:8080/api/v1/mock/recognize
+      api-key: mock-api-key-2024
+      timeout: 5000
+
+# 日志配置
+logging:
+  level:
+    com.zjfc.smartgarbage: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+  file:
+    name: logs/smart-garbage.log
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
