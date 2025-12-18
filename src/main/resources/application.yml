@@ -39,17 +39,19 @@ spring:
     serialization:
       write-dates-as-timestamps: false
   
-  # 文件上传配置
+  # 文件上传配置（保留这个即可）
   servlet:
     multipart:
+      enabled: true
       max-file-size: 10MB
       max-request-size: 20MB
+      file-size-threshold: 2KB
 
 # 服务器配置
 server:
   port: 8080
   servlet:
-    context-path: /api
+    context-path: /
   tomcat:
     max-connections: 10000
     threads:
@@ -91,6 +93,29 @@ smart-garbage:
       endpoint: http://localhost:8080/api/v1/mock/recognize
       api-key: mock-api-key-2024
       timeout: 5000
+
+# ======================
+# 阿里云配置（关键修改！）
+# ======================
+# 方案1：直接配置（测试用）
+aliyun:
+  access-key: ${ALIBABA_ACCESS_KEY:}  # 使用环境变量
+  secret-key: ${ALIBABA_SECRET_KEY:}  # 使用环境变量为你的AccessKey Secret
+  regionId: cn-shanghai
+
+# 方案2：使用环境变量（更安全）
+#aliyun:
+#  accessKeyId: ${ALIYUN_ACCESS_KEY_ID}
+#  accessKeySecret: ${ALIYUN_ACCESS_KEY_SECRET}
+#  regionId: cn-shanghai
+
+# ======================
+# 上传目录配置
+# ======================
+file:
+  upload:
+    path: uploads
+    max-size: 10485760  # 10MB
 
 # 日志配置
 logging:
