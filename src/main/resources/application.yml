@@ -58,6 +58,8 @@ server:
       max: 200
       min-spare: 10
 
+
+
 # 自定义配置
 smart-garbage:
   # 积分规则
@@ -95,27 +97,24 @@ smart-garbage:
       timeout: 5000
 
 # ======================
-# 阿里云配置（关键修改！）
+# 百度AI图像识别配置
 # ======================
-# 方案1：直接配置（测试用）
-aliyun:
-  access-key: ${ALIBABA_ACCESS_KEY:}  # 使用环境变量
-  secret-key: ${ALIBABA_SECRET_KEY:}  # 使用环境变量为你的AccessKey Secret
-  regionId: cn-shanghai
-
-# 方案2：使用环境变量（更安全）
-#aliyun:
-#  accessKeyId: ${ALIYUN_ACCESS_KEY_ID}
-#  accessKeySecret: ${ALIYUN_ACCESS_KEY_SECRET}
-#  regionId: cn-shanghai
-
-# ======================
-# 上传目录配置
-# ======================
-file:
-  upload:
-    path: uploads
-    max-size: 10485760  # 10MB
+baidu:
+  ai:
+    # 在百度AI开放平台创建应用获取：https://ai.baidu.com/
+    app-id: 121431107
+    api-key: Ry0uU24vmnRPKGVzuReMTDjT
+    secret-key:  DaKHILui2u4bJnhgDs40LwWfoyQM98m3
+    # 图像识别API地址（高级通用物体识别）
+    recognition-url: https://aip.baidubce.com/rest/2.0/image-classify/v2/advanced_general
+    # 可选：其他API地址
+    # dish-url: https://aip.baidubce.com/rest/2.0/image-classify/v2/dish  # 菜品识别
+    # animal-url: https://aip.baidubce.com/rest/2.0/image-classify/v1/animal  # 动物识别
+    # plant-url: https://aip.baidubce.com/rest/2.0/image-classify/v1/plant  # 植物识别
+    
+    # 请求配置
+    timeout: 10000  # 10秒超时
+    max-retry: 3    # 最大重试次数
 
 # 日志配置
 logging:
