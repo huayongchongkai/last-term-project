@@ -3,727 +3,1877 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智能垃圾分类系统</title>
+    <title>智能垃圾分类助手</title>
     <link href="https://cdn.bootcdn.net/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        .type-card {
-            transition: all 0.3s ease;
-            border-radius: 15px;
-            overflow: hidden;
-        }
-        .type-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 15px 30px rgba(0,0,0,0.15);
-        }
+        /* 样式保持不变 */
+        html, body { overflow-x: hidden; max-width: 100%; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); z-index: 100; display: none; }
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 90%; max-height: 90vh; overflow-y: auto; z-index: 101; display: none; }
+        @media (max-width: 768px) { .modal { width: 95%; } }
+        .type-card { transition: all 0.3s ease; border-radius: 15px; overflow: hidden; }
+        .type-card:hover { transform: translateY(-10px); box-shadow: 0 15px 30px rgba(0,0,0,0.15); }
         .recyclable { border-top: 5px solid #1890ff; }
         .kitchen { border-top: 5px solid #52c41a; }
         .hazardous { border-top: 5px solid #f5222d; }
         .other { border-top: 5px solid #8c8c8c; }
-        .pulse-animation {
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        .file-upload-area {
-            border: 3px dashed #cbd5e0;
-            border-radius: 12px;
-            transition: all 0.3s ease;
-        }
-        .file-upload-area:hover {
-            border-color: #9f7aea;
-            background-color: #faf5ff;
-        }
-        .file-upload-area.dragover {
-            border-color: #9f7aea;
-            background-color: #f5f3ff;
-            transform: scale(1.02);
-        }
+        .pulse-animation { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        .file-upload-area { border: 3px dashed #cbd5e0; border-radius: 12px; transition: all 0.3s ease; }
+        .file-upload-area:hover { border-color: #9f7aea; background-color: #faf5ff; }
+        .file-upload-area.dragover { border-color: #9f7aea; background-color: #f5f3ff; transform: scale(1.02); }
+        .user-menu { position: relative; }
+        .user-menu-content { position: absolute; right: 0; top: 100%; min-width: 200px; background: white; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: none; z-index: 50; }
+        .user-menu:hover .user-menu-content { display: block; }
+        .tab-active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .category-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .category-recyclable { background-color: #e6f7ff; color: #1890ff; border: 1px solid #91d5ff; }
+        .category-kitchen { background-color: #f6ffed; color: #52c41a; border: 1px solid #b7eb8f; }
+        .category-hazardous { background-color: #fff1f0; color: #f5222d; border: 1px solid #ffa39e; }
+        .category-other { background-color: #fafafa; color: #8c8c8c; border: 1px solid #d9d9d9; }
+        .category-unknown { background-color: #f8f0ff; color: #722ed1; border: 1px solid #d3adf7; }
+        .progress-bar { height: 6px; border-radius: 3px; background: #e5e7eb; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s ease; }
+        .result-item { border-left: 4px solid transparent; transition: all 0.2s ease; }
+        .result-item:hover { transform: translateX(5px); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body class="gradient-bg">
-    <div class="container mx-auto px-4 py-12">
-        <!-- 头部 -->
-        <div class="text-center mb-16">
-            <div class="inline-block p-4 rounded-full bg-white/20 mb-6">
-                <i class="fas fa-recycle text-6xl text-white"></i>
+    <!-- 模态框部分保持不变 -->
+    <div id="modalBackdrop" class="modal-backdrop" onclick="closeModal()"></div>
+    
+    <!-- 登录模态框 -->
+    <div id="loginModal" class="modal glass-card p-8 max-w-md w-full">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-2xl font-bold text-gray-800">用户登录</h3>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-xl">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div id="loginMessage" class="my-4"></div>
+        
+        <form onsubmit="login(event)">
+            <div class="mb-4">
+                <label for="loginStudentId" class="block text-gray-700 mb-2">学号</label>
+                <input type="text" id="loginStudentId" 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                       placeholder="请输入学号" required>
             </div>
-            <h1 class="text-5xl font-bold text-white mb-4">校园智能垃圾分类系统</h1>
-            <p class="text-xl text-white/80 mb-8">AI智能识别 · 绿色校园 · 积分激励</p>
             
-            <!-- 状态指示器 -->
-            <div class="inline-flex items-center px-6 py-3 rounded-full bg-white/20">
-                <div class="w-3 h-3 rounded-full bg-green-400 mr-3 animate-pulse"></div>
-                <span class="text-white font-semibold">系统运行正常 · 实时在线</span>
+            <div class="mb-6">
+                <label for="loginPassword" class="block text-gray-700 mb-2">密码</label>
+                <input type="password" id="loginPassword" 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                       placeholder="请输入密码" required>
+            </div>
+            
+            <button type="submit" 
+                    class="w-full py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 transition font-semibold">
+                <i class="fas fa-sign-in-alt mr-2"></i>登录
+            </button>
+        </form>
+        
+        <div class="mt-6 text-center">
+            <p class="text-gray-600">还没有账户？ 
+                <a href="#" onclick="showRegister()" class="text-purple-600 hover:text-purple-800 font-semibold">立即注册</a>
+            </p>
+        </div>
+    </div>
+    
+    <!-- 注册模态框 -->
+    <div id="registerModal" class="modal glass-card p-8 max-w-md w-full">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-2xl font-bold text-gray-800">用户注册</h3>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-xl">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div id="registerMessage" class="my-4"></div>
+        
+        <form onsubmit="register(event)">
+            <div class="mb-4">
+                <label for="registerStudentId" class="block text-gray-700 mb-2">学号</label>
+                <input type="text" id="registerStudentId" 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                       placeholder="10-15位数字" required>
+            </div>
+            
+            <div class="mb-4">
+                <label for="registerUsername" class="block text-gray-700 mb-2">用户名</label>
+                <input type="text" id="registerUsername" 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                       placeholder="2-20位字符" required>
+            </div>
+            
+            <div class="mb-4">
+                <label for="registerPassword" class="block text-gray-700 mb-2">密码</label>
+                <input type="password" id="registerPassword" 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                       placeholder="包含字母和数字，6-20位" required>
+            </div>
+            
+            <div class="mb-4">
+                <label for="registerEmail" class="block text-gray-700 mb-2">邮箱（可选）</label>
+                <input type="email" id="registerEmail" 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                       placeholder="请输入邮箱">
+            </div>
+            
+            <div class="mb-4">
+                <label for="registerPhone" class="block text-gray-700 mb-2">手机号（可选）</label>
+                <input type="tel" id="registerPhone" 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                       placeholder="11位手机号">
+            </div>
+            
+            <div class="mb-6">
+                <label for="registerDormitory" class="block text-gray-700 mb-2">宿舍（可选）</label>
+                <input type="text" id="registerDormitory" 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                       placeholder="如：梅园1栋101">
+            </div>
+            
+            <button type="submit" 
+                    class="w-full py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition font-semibold">
+                <i class="fas fa-user-plus mr-2"></i>注册
+            </button>
+        </form>
+        
+        <div class="mt-6 text-center">
+            <p class="text-gray-600">已有账户？ 
+                <a href="#" onclick="showLogin()" class="text-purple-600 hover:text-purple-800 font-semibold">立即登录</a>
+            </p>
+        </div>
+    </div>
+
+
+    
+    <!-- 用户信息模态框 -->
+    <div id="userInfoModal" class="modal glass-card p-8 max-w-md w-full">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-2xl font-bold text-gray-800">个人信息</h3>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-xl">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="space-y-4">
+            <div class="flex justify-between">
+                <span class="text-gray-600">用户名：</span>
+                <span id="userName" class="font-semibold text-gray-800">用户</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">学号：</span>
+                <span id="userStudentId" class="font-semibold text-gray-800"></span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">当前积分：</span>
+                <span id="userPoints" class="font-semibold text-green-600">0</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">用户等级：</span>
+                <span id="userLevel" class="font-semibold text-purple-600">普通用户</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">邮箱：</span>
+                <span id="userEmail" class="font-semibold text-gray-800">未设置</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">手机号：</span>
+                <span id="userPhone" class="font-semibold text-gray-800">未设置</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-600">宿舍：</span>
+                <span id="userDormitory" class="font-semibold text-gray-800">未设置</span>
             </div>
         </div>
+        
+        <div class="mt-8 text-center">
+            <button onclick="logout()" class="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">
+                <i class="fas fa-sign-out-alt mr-2"></i>退出登录
+            </button>
+        </div>
+    </div>
 
-        <!-- 主要功能卡片 -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-            <!-- 识别功能 -->
-            <div class="glass-card p-8">
-                <div class="text-center mb-6">
-                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-600 mb-4">
-                        <i class="fas fa-camera text-2xl"></i>
-                    </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-2">智能识别</h3>
-                    <p class="text-gray-600">拍照上传，AI智能分类垃圾</p>
-                </div>
-                <div class="space-y-4">
-                    <div class="flex items-center text-gray-700">
-                        <i class="fas fa-check-circle text-green-500 mr-3"></i>
-                        <span>支持多种图片格式</span>
-                    </div>
-                    <div class="flex items-center text-gray-700">
-                        <i class="fas fa-check-circle text-green-500 mr-3"></i>
-                        <span>毫秒级识别响应</span>
-                    </div>
-                </div>
-            </div>
+</div>
 
-            <!-- 积分系统 -->
-            <div class="glass-card p-8">
-                <div class="text-center mb-6">
-                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-4">
-                        <i class="fas fa-star text-2xl"></i>
-                    </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-2">积分激励</h3>
-                    <p class="text-gray-600">正确分类，获取积分奖励</p>
-                </div>
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-700">可回收垃圾</span>
-                        <span class="font-bold text-green-600">+10分</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-700">厨余垃圾</span>
-                        <span class="font-bold text-green-600">+5分</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 数据统计 -->
-            <div class="glass-card p-8">
-                <div class="text-center mb-6">
-                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 text-purple-600 mb-4">
-                        <i class="fas fa-chart-bar text-2xl"></i>
-                    </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-2">数据可视化</h3>
-                    <p class="text-gray-600">实时统计，数据分析</p>
-                </div>
-                <div class="space-y-4">
-                    <div class="flex items-center text-gray-700">
-                        <i class="fas fa-check-circle text-green-500 mr-3"></i>
-                        <span>用户行为分析</span>
-                    </div>
-                    <div class="flex items-center text-gray-700">
-                        <i class="fas fa-check-circle text-green-500 mr-3"></i>
-                        <span>垃圾分类统计</span>
-                    </div>
+<!-- 积分兑换商城模态框 -->
+<!-- 积分兑换商城模态框 -->
+<div id="pointsExchangeModal" class="modal glass-card p-8 max-w-4xl w-full">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h3 class="text-2xl font-bold text-gray-800">积分兑换中心</h3>
+            <p class="text-gray-600 mt-1">
+                当前积分: <span id="exchangeCurrentPoints" class="font-bold text-green-600">0</span>
+                <span class="text-sm text-gray-500 ml-3">（正确分类垃圾可获得积分）</span>
+            </p>
+        </div>
+        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-xl">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    
+    <div id="exchangeMessage" class="my-4"></div>
+    
+    <!-- 标签页导航 - 简化为2个 -->
+    <div class="mb-6">
+        <div class="flex space-x-1 bg-gray-100 p-1 rounded-lg" style="max-width: 300px;">
+            <button onclick="switchExchangeTab('all')" id="tabAll" class="flex-1 py-2 px-4 text-center rounded-lg font-medium tab-active">
+                全部券种
+            </button>
+            <button onclick="switchExchangeTab('records')" id="tabRecords" class="flex-1 py-2 px-4 text-center rounded-lg font-medium">
+                兑换记录
+            </button>
+        </div>
+    </div>
+    
+    <!-- 商品列表区域 -->
+    <div id="exchangeItemsContainer" class="mb-8">
+        <div class="text-center py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p class="text-gray-500">正在加载可兑换券...</p>
+        </div>
+    </div>
+    
+    <!-- 兑换记录区域（初始隐藏） -->
+    <div id="exchangeRecordsContainer" class="mb-8" style="display: none;">
+        <div class="text-center py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p class="text-gray-500">正在加载兑换记录...</p>
+        </div>
+    </div>
+    
+    <!-- 兑换确认弹窗（简化版） -->
+    <div id="exchangeConfirmModal" class="modal glass-card p-6 max-w-md w-full" style="display: none; position: relative;">
+        <div class="flex justify-between items-center mb-4">
+            <h4 class="text-xl font-bold text-gray-800">确认兑换</h4>
+            <button onclick="closeExchangeConfirm()" class="text-gray-400 hover:text-gray-600 text-xl">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div id="exchangeConfirmInfo" class="mb-6">
+            <!-- 动态填充确认信息 -->
+        </div>
+        
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg mb-4">
+            <div class="flex items-start">
+                <i class="fas fa-info-circle text-yellow-500 mt-1 mr-2"></i>
+                <div>
+                    <p class="text-sm text-yellow-800">
+                        <strong>使用说明：</strong>兑换成功后，可在兑换记录中查看优惠券码
+                    </p>
                 </div>
             </div>
         </div>
-
-        <!-- 图片识别测试区域（放在更显眼的位置） -->
-        <div class="glass-card p-8 mb-16">
-            <h2 class="text-3xl font-bold text-gray-800 mb-6 flex items-center">
-                <i class="fas fa-camera-retro mr-4 text-purple-600"></i>
-                图片识别测试
-            </h2>
+        
+        <div class="flex space-x-3">
+            <button onclick="confirmExchange()" 
+                    class="flex-1 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition font-semibold">
+                <i class="fas fa-check mr-2"></i>确认兑换
+            </button>
+            <button onclick="closeExchangeConfirm()" 
+                    class="px-6 py-3 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition font-semibold">
+                取消
+            </button>
+        </div>
+    </div>
+</div>
+    
+    <!-- 图片识别模态框 -->
+    <div id="imageRecognitionModal" class="modal glass-card p-8 max-w-2xl w-full">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-2xl font-bold text-gray-800">图片识别</h3>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-xl">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div id="recognitionMessage" class="my-4"></div>
+        
+        <!-- 文件上传区域 -->
+        <div id="uploadArea" class="mb-6">
+            <div class="file-upload-area p-8 text-center cursor-pointer" 
+                 onclick="document.getElementById('imageFile').click()"
+                 ondrop="handleDrop(event)" 
+                 ondragover="handleDragOver(event)"
+                 ondragleave="handleDragLeave(event)">
+                <input type="file" id="imageFile" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+                <div class="mb-4">
+                    <i class="fas fa-cloud-upload-alt text-4xl text-purple-400"></i>
+                </div>
+                <h4 class="text-lg font-semibold text-gray-700 mb-2">上传垃圾图片</h4>
+                <p class="text-gray-500 mb-2">点击或拖拽图片到此处上传</p>
+                <p class="text-sm text-gray-400">支持 JPG、PNG、GIF 格式，最大 5MB</p>
+            </div>
             
-            <!-- 文件上传区域 -->
-            <div id="uploadArea" class="file-upload-area p-12 text-center mb-8">
-                <div class="mb-6">
-                    <i class="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
-                    <h3 class="text-2xl font-bold text-gray-700 mb-2">上传图片进行垃圾分类识别</h3>
-                    <p class="text-gray-600 mb-4">将图片拖放到此处，或点击选择文件</p>
-                </div>
-                
-                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
-                    <input type="file" id="imageUpload" accept="image/*" class="hidden">
-                    <label for="imageUpload" id="uploadButton" class="cursor-pointer inline-flex items-center px-8 py-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition-all shadow-lg hover:shadow-xl">
-                        <i class="fas fa-folder-open mr-3 text-lg"></i>
-                        选择图片文件
-                    </label>
-                    <div class="text-sm text-gray-500">
-                        <p><i class="fas fa-info-circle mr-2"></i>支持 JPG、PNG 格式</p>
-                        <p><i class="fas fa-sd-card mr-2"></i>最大 10MB</p>
+            <div id="imagePreview" class="mt-4" style="display: none;">
+                <div class="flex items-center justify-between bg-gray-50 p-4 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                            <i class="fas fa-image text-purple-600"></i>
+                        </div>
+                        <div>
+                            <p id="fileName" class="font-medium text-gray-800"></p>
+                            <p id="fileSize" class="text-sm text-gray-500"></p>
+                        </div>
                     </div>
+                    <button onclick="removeImage()" class="text-red-500 hover:text-red-700">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-                
-                <!-- 文件信息显示 -->
-                <div id="fileInfo" class="hidden mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div class="flex items-center justify-between">
+                <div class="mt-4">
+                    <img id="previewImage" class="max-h-48 mx-auto rounded-lg shadow-md">
+                </div>
+            </div>
+        </div>
+        
+        <!-- 识别结果区域 -->
+        <div id="recognitionResult" style="display: none;">
+            <div class="mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-gray-700">总体置信度</span>
+                            <span id="overallConfidence" class="font-bold text-blue-600">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div id="confidenceBar" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-700">识别物品</span>
+                            <span id="itemsCount" class="font-bold text-green-600">0个</span>
+                        </div>
+                        <div class="text-sm text-gray-500 mt-1" id="categoriesCount">0类</div>
+                    </div>
+                    
+                    <div id="pointsEarned" class="bg-yellow-50 p-4 rounded-lg" style="display: none;">
                         <div class="flex items-center">
-                            <i class="fas fa-file-image text-blue-500 text-xl mr-3"></i>
+                            <i class="fas fa-coins text-yellow-500 mr-2"></i>
                             <div>
-                                <p id="fileName" class="font-medium text-blue-800"></p>
-                                <p id="fileSize" class="text-sm text-blue-600"></p>
+                                <p class="font-medium text-yellow-800">积分奖励</p>
+                                <p id="pointsText" class="text-yellow-700">获得 <span id="pointsValue">0</span> 积分</p>
                             </div>
                         </div>
-                        <button onclick="clearFile()" class="text-red-500 hover:text-red-700">
-                            <i class="fas fa-times text-xl"></i>
-                        </button>
                     </div>
                 </div>
-            </div>
-            
-            <!-- 识别结果区域 -->
-            <div id="recognitionResult" class="hidden">
-                <h3 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-                    <i class="fas fa-search mr-3 text-blue-600"></i>
-                    识别结果
-                </h3>
-                <div id="resultContent">
-                    <!-- 结果将在这里动态显示 -->
+                
+                <div id="suggestionBox" class="bg-green-50 border-l-4 border-green-400 p-4 rounded-lg mb-4">
+                    <div class="flex items-start">
+                        <i class="fas fa-lightbulb text-green-500 mt-1 mr-2"></i>
+                        <div>
+                            <p class="font-medium text-green-800 mb-1">投放建议</p>
+                            <p id="suggestionText" class="text-green-700">正在分析...</p>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- API测试按钮 -->
-            <div class="mt-8 pt-8 border-t border-gray-200">
-                <h4 class="text-lg font-bold text-gray-700 mb-4">API接口测试</h4>
-                <div class="flex flex-wrap gap-4">
-                    <button onclick="testCategories()" class="flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                        <i class="fas fa-database mr-2"></i>
-                        测试分类API
-                    </button>
-                    <button onclick="checkServiceStatus()" class="flex items-center px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                        <i class="fas fa-server mr-2"></i>
-                        服务状态
-                    </button>
+                
+                <div id="hazardWarning" class="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg mb-4" style="display: none;">
+                    <div class="flex items-start">
+                        <i class="fas fa-exclamation-triangle text-red-500 mt-1 mr-2"></i>
+                        <div>
+                            <p class="font-medium text-red-800 mb-1">⚠️ 重要提醒</p>
+                            <p id="hazardWarningText" class="text-red-700">检测到有害垃圾，请务必单独处理！</p>
+                        </div>
+                    </div>
                 </div>
-                <div id="apiTestResult" class="mt-4"></div>
+                
+                <h5 class="font-semibold text-gray-700 mb-3">识别到的物品</h5>
+                <div id="itemsList" class="space-y-3 max-h-64 overflow-y-auto p-2"></div>
+                
+                <div id="categoryStats" class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <!-- 这里会动态生成分类统计 -->
+                </div>
             </div>
         </div>
-
-        <!-- 垃圾类型展示 -->
-        <div class="mb-16">
-            <h2 class="text-3xl font-bold text-white mb-8 text-center">四大垃圾分类</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="type-card recyclable glass-card p-6">
-                    <div class="flex items-center mb-4">
-                        <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mr-4">
-                            <i class="fas fa-recycle text-blue-600 text-xl"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-bold text-gray-800">可回收垃圾</h3>
-                            <p class="text-blue-600 font-semibold">+10积分</p>
-                        </div>
-                    </div>
-                    <p class="text-gray-600 mb-4">塑料、纸张、玻璃、金属等可再利用物品</p>
-                    <div class="text-sm text-gray-500">
-                        <i class="fas fa-trash-alt mr-2"></i>蓝色垃圾桶
-                    </div>
+        
+        <div class="flex space-x-3">
+            <button id="recognizeBtn" onclick="recognizeImage()" 
+                    class="flex-1 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled>
+                <i class="fas fa-brain mr-2"></i>开始识别
+            </button>
+            <button onclick="resetRecognition()" class="px-6 py-3 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition font-semibold">
+                重新上传
+            </button>
+        </div>
+    </div>
+    
+    <div class="container mx-auto px-4 py-6">
+        <!-- 顶部导航栏 -->
+        <div class="flex justify-between items-center mb-8">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-white/20 mr-4">
+                    <i class="fas fa-recycle text-2xl text-white"></i>
                 </div>
-
-                <div class="type-card kitchen glass-card p-6">
-                    <div class="flex items-center mb-4">
-                        <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mr-4">
-                            <i class="fas fa-apple-alt text-green-600 text-xl"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-bold text-gray-800">厨余垃圾</h3>
-                            <p class="text-green-600 font-semibold">+5积分</p>
-                        </div>
-                    </div>
-                    <p class="text-gray-600 mb-4">剩菜剩饭、果皮果核、茶叶渣等易腐垃圾</p>
-                    <div class="text-sm text-gray-500">
-                        <i class="fas fa-trash-alt mr-2"></i>绿色垃圾桶
-                    </div>
+                <h1 class="text-2xl font-bold text-white">智能垃圾分类助手</h1>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <button onclick="showTestInfo()" class="px-4 py-2 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 transition shadow-md">
+                    <i class="fas fa-vial mr-2"></i>测试账户
+                </button>
+                
+                <div id="notLoggedIn" class="flex items-center space-x-3">
+                    <button onclick="showLogin()" class="px-6 py-2 bg-white/20 backdrop-blur-sm text-white rounded-xl hover:bg-white/30 transition shadow-md">
+                        登录
+                    </button>
+                    <button onclick="showRegister()" class="px-6 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl hover:from-purple-600 hover:to-purple-700 transition shadow-md">
+                        注册
+                    </button>
                 </div>
-
-                <div class="type-card hazardous glass-card p-6">
-                    <div class="flex items-center mb-4">
-                        <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mr-4">
-                            <i class="fas fa-radiation text-red-600 text-xl"></i>
+                
+                <div id="loggedIn" class="user-menu" style="display: none;">
+                    <div class="flex items-center space-x-3 cursor-pointer">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-r from-purple-400 to-purple-600 flex items-center justify-center text-white shadow-md">
+                            <i class="fas fa-user"></i>
                         </div>
                         <div>
-                            <h3 class="text-xl font-bold text-gray-800">有害垃圾</h3>
-                            <p class="text-red-600 font-semibold">+15积分</p>
+                            <p id="navUsername" class="font-semibold text-white">用户名</p>
+                            <p id="navPoints" class="text-xs text-white/80">积分: 0</p>
                         </div>
+                        <i class="fas fa-chevron-down text-white/60"></i>
                     </div>
-                    <p class="text-gray-600 mb-4">电池、药品、灯管、油漆等有害物质</p>
-                    <div class="text-sm text-gray-500">
-                        <i class="fas fa-trash-alt mr-2"></i>红色垃圾桶
-                    </div>
-                </div>
-
-                <div class="type-card other glass-card p-6">
-                    <div class="flex items-center mb-4">
-                        <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mr-4">
-                            <i class="fas fa-ban text-gray-600 text-xl"></i>
+                    <div class="user-menu-content">
+                        <div class="py-4 px-4">
+                            <p class="font-semibold text-gray-800 mb-2" id="menuUsername">用户名</p>
+                            <p class="text-sm text-gray-600 mb-4" id="menuStudentId">学号</p>
+                            <div class="space-y-2">
+                                <a href="#" onclick="showUserInfo()" class="block px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition">
+                                    <i class="fas fa-user-circle mr-2"></i>个人信息
+                                </a>
+                                <a href="#" onclick="logout()" class="block px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition">
+                                    <i class="fas fa-sign-out-alt mr-2"></i>退出登录
+                                </a>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="text-xl font-bold text-gray-800">其他垃圾</h3>
-                            <p class="text-gray-600 font-semibold">+0积分</p>
-                        </div>
-                    </div>
-                    <p class="text-gray-600 mb-4">卫生纸、陶瓷碎片、污染纸张等</p>
-                    <div class="text-sm text-gray-500">
-                        <i class="fas fa-trash-alt mr-2"></i>灰色垃圾桶
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 系统信息 -->
-        <div class="glass-card p-8">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">系统信息</h2>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="text-center p-4">
-                    <div class="text-3xl font-bold text-blue-600 mb-2">Spring Boot</div>
-                    <div class="text-gray-600">后端框架</div>
+        <!-- 欢迎区域 -->
+        <div class="glass-card p-8 mb-8 text-center">
+            <h2 class="text-3xl font-bold text-gray-800 mb-4">🌱 欢迎使用智能垃圾分类助手</h2>
+            <p class="text-gray-600 mb-6">通过AI智能识别技术，轻松解决垃圾分类难题</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition">
+                    <i class="fas fa-camera text-blue-500 text-2xl mb-2"></i>
+                    <h4 class="font-semibold text-gray-800 mb-1">智能拍照识别</h4>
+                    <p class="text-sm text-gray-600">上传垃圾图片，AI自动识别分类</p>
                 </div>
-                <div class="text-center p-4">
-                    <div class="text-3xl font-bold text-green-600 mb-2">MySQL</div>
-                    <div class="text-gray-600">数据库</div>
+                <div class="p-4 bg-green-50 rounded-lg hover:bg-green-100 transition">
+                    <i class="fas fa-award text-green-500 text-2xl mb-2"></i>
+                    <h4 class="font-semibold text-gray-800 mb-1">积分奖励系统</h4>
+                    <p class="text-sm text-gray-600">正确分类获取积分，兑换奖励</p>
                 </div>
-                <div class="text-center p-4">
-                    <div class="text-3xl font-bold text-purple-600 mb-2">Hibernate</div>
-                    <div class="text-gray-600">ORM框架</div>
+                <div class="p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition">
+                    <i class="fas fa-graduation-cap text-purple-500 text-2xl mb-2"></i>
+                    <h4 class="font-semibold text-gray-800 mb-1">分类知识学习</h4>
+                    <p class="text-sm text-gray-600">学习垃圾分类知识，提升环保意识</p>
                 </div>
-                <div class="text-center p-4">
-                    <div class="text-3xl font-bold text-red-600 mb-2">AI识别</div>
-                    <div class="text-gray-600">图像识别</div>
+            </div>
+            
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg text-left mb-6">
+                <p class="text-yellow-800">
+                    <i class="fas fa-lightbulb mr-2"></i>
+                    <strong>使用提示：</strong> 首次使用请先注册账户，或使用测试账户快速体验
+                </p>
+            </div>
+        </div>
+
+        <!-- 登录提示 -->
+        <div id="loginRequired" class="glass-card p-8 mb-8 text-center">
+            <div class="mb-6">
+                <i class="fas fa-lock-open text-6xl text-purple-400 mb-4"></i>
+                <h3 class="text-2xl font-bold text-gray-700 mb-2">立即登录解锁全部功能</h3>
+                <p class="text-gray-600 mb-4">体验智能识别、积分奖励、分类学习等完整功能</p>
+            </div>
+            <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <button onclick="showLogin()" class="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 transition shadow-lg hover:shadow-xl">
+                    <i class="fas fa-sign-in-alt mr-2"></i>立即登录
+                </button>
+                <button onclick="showRegister()" class="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition shadow-lg hover:shadow-xl">
+                    <i class="fas fa-user-plus mr-2"></i>免费注册
+                </button>
+            </div>
+        </div>
+
+        <!-- 功能演示区域（登录后显示） -->
+        <div id="mainContent" style="display: none;">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-white mb-3">✨ 欢迎回来，<span id="welcomeUsername">用户</span>！</h2>
+                <p class="text-white/80 mb-6">开始您的垃圾分类之旅吧！</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass-card p-6 type-card hover:shadow-xl transition-all duration-300">
+                        <div class="text-center mb-4">
+                            <div class="w-16 h-16 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-camera text-white text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-800 mb-2">快速识别</h3>
+                            <p class="text-gray-600 mb-4">上传垃圾图片，AI智能识别分类</p>
+                            <button onclick="showImageRecognition()" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
+                                开始识别
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card p-6 type-card hover:shadow-xl transition-all duration-300">
+                        <div class="text-center mb-4">
+                            <div class="w-16 h-16 bg-gradient-to-r from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-trophy text-white text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-800 mb-2">积分奖励</h3>
+                            <p class="text-gray-600 mb-4">当前积分：<span class="font-bold text-green-600" id="mainPoints">0</span></p>
+                            <p class="text-sm text-gray-500 mb-4">可用积分兑换食堂、超市消费券</p>
+                            <button onclick="showPointsExchange()" class="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
+                                兑换消费券
+                            </button>
+                        </div>
+                    </div>
+                    
+                    
+                        
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // 当前选中的文件
-        let currentFile = null;
-        
-        // 页面加载时初始化
-        window.onload = function() {
-            initDragAndDrop();
+        // ==== 全局错误处理和调试 ====
+        window.addEventListener('error', function(e) {
+            console.warn('捕获到JavaScript错误:', {
+                消息: e.message,
+                文件: e.filename,
+                行号: e.lineno,
+                列号: e.colno
+            });
+        });
+
+        // 安全元素访问辅助函数
+        const getSafeElement = (id) => {
+            const element = document.getElementById(id);
+            if (!element) {
+                console.warn(`⚠️ 元素 #${id} 不存在`);
+                return null;
+            }
+            return element;
         };
+
+        // ==== 当前用户信息 ====
+        let currentUser = null;
+        let currentToken = null;
+        let selectedFile = null;
         
-        // 初始化拖拽功能
-        function initDragAndDrop() {
-            const uploadArea = document.getElementById('uploadArea');
+        // ==== 页面初始化 ====
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('页面DOM加载完成，开始检查登录状态');
+            checkLoginStatus();
+        });
+        
+        // ==== 测试账户功能 ====
+        function showTestInfo() {
+            alert(`测试账户信息：
+学号: 2024123456 (10位数字)
+密码: abc123 (包含字母和数字)
+
+或者自行注册账户：
+1. 学号: 10-15位数字
+2. 用户名: 2-20位
+3. 密码: 包含字母和数字，6-20位
+4. 邮箱: 可选
+5. 手机号: 可选（11位）
+6. 宿舍: 可选`);
             
-            // 拖拽事件
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                uploadArea.addEventListener(eventName, preventDefaults, false);
-            });
+            // 安全地填充测试账户
+            const loginStudentId = getSafeElement('loginStudentId');
+            const loginPassword = getSafeElement('loginPassword');
             
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
+            if (loginStudentId && loginPassword) {
+                loginStudentId.value = '2024123456';
+                loginPassword.value = 'abc123';
+                showLogin();
             }
-            
-            // 高亮拖拽区域
-            ['dragenter', 'dragover'].forEach(eventName => {
-                uploadArea.addEventListener(eventName, () => {
-                    uploadArea.classList.add('dragover');
-                }, false);
-            });
-            
-            ['dragleave', 'drop'].forEach(eventName => {
-                uploadArea.addEventListener(eventName, () => {
-                    uploadArea.classList.remove('dragover');
-                }, false);
-            });
-            
-            // 处理文件放下
-            uploadArea.addEventListener('drop', handleDrop, false);
         }
         
-        // 处理拖拽放下文件
-        function handleDrop(e) {
-            const dt = e.dataTransfer;
-            const file = dt.files[0];
+        // ==== 登录状态管理 ====
+        function checkLoginStatus() {
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
             
-            if (file && file.type.startsWith('image/')) {
-                setSelectedFile(file);
+            if (token && user) {
+                try {
+                    currentToken = token;
+                    currentUser = JSON.parse(user);
+                    updateUIForLoggedIn();
+                } catch (e) {
+                    console.error('解析用户数据失败:', e);
+                    logout();
+                }
             } else {
-                showError('请选择图片文件（JPG/PNG格式）');
+                updateUIForNotLoggedIn();
             }
         }
         
-        // 文件选择事件处理
-        document.getElementById('imageUpload').addEventListener('change', function(e) {
-            const file = e.target.files[0];
+        function updateUIForLoggedIn() {
+            const notLoggedIn = getSafeElement('notLoggedIn');
+            const loggedIn = getSafeElement('loggedIn');
+            const loginRequired = getSafeElement('loginRequired');
+            const mainContent = getSafeElement('mainContent');
+            
+            if (notLoggedIn) notLoggedIn.style.display = 'none';
+            if (loggedIn) loggedIn.style.display = 'block';
+            if (loginRequired) loginRequired.style.display = 'none';
+            if (mainContent) mainContent.style.display = 'block';
+            
+            if (currentUser) {
+                const navUsername = getSafeElement('navUsername');
+                const navPoints = getSafeElement('navPoints');
+                const menuUsername = getSafeElement('menuUsername');
+                const menuStudentId = getSafeElement('menuStudentId');
+                const welcomeUsername = getSafeElement('welcomeUsername');
+                const mainPoints = getSafeElement('mainPoints');
+                
+                if (navUsername) navUsername.textContent = currentUser.username || '用户';
+                if (navPoints) navPoints.textContent = `积分: ${currentUser.totalPoints || 0}`;
+                if (menuUsername) menuUsername.textContent = currentUser.username || '用户';
+                if (menuStudentId) menuStudentId.textContent = currentUser.studentId || '';
+                if (welcomeUsername) welcomeUsername.textContent = currentUser.username || '用户';
+                if (mainPoints) mainPoints.textContent = currentUser.totalPoints || 0;
+            }
+        }
+        
+        function updateUIForNotLoggedIn() {
+            const notLoggedIn = getSafeElement('notLoggedIn');
+            const loggedIn = getSafeElement('loggedIn');
+            const loginRequired = getSafeElement('loginRequired');
+            const mainContent = getSafeElement('mainContent');
+            
+            if (notLoggedIn) notLoggedIn.style.display = 'flex';
+            if (loggedIn) loggedIn.style.display = 'none';
+            if (loginRequired) loginRequired.style.display = 'block';
+            if (mainContent) mainContent.style.display = 'none';
+            
+            closeModal();
+        }
+        
+        // ==== 模态框管理 ====
+        function showLogin() {
+            const modalBackdrop = getSafeElement('modalBackdrop');
+            const loginModal = getSafeElement('loginModal');
+            const registerModal = getSafeElement('registerModal');
+            const userInfoModal = getSafeElement('userInfoModal');
+            const imageRecognitionModal = getSafeElement('imageRecognitionModal');
+            const loginMessage = getSafeElement('loginMessage');
+            
+            if (modalBackdrop) modalBackdrop.style.display = 'block';
+            if (loginModal) loginModal.style.display = 'block';
+            if (registerModal) registerModal.style.display = 'none';
+            if (userInfoModal) userInfoModal.style.display = 'none';
+            if (imageRecognitionModal) imageRecognitionModal.style.display = 'none';
+            if (loginMessage) loginMessage.innerHTML = '';
+        }
+        
+        function showRegister() {
+            const modalBackdrop = getSafeElement('modalBackdrop');
+            const loginModal = getSafeElement('loginModal');
+            const registerModal = getSafeElement('registerModal');
+            const userInfoModal = getSafeElement('userInfoModal');
+            const imageRecognitionModal = getSafeElement('imageRecognitionModal');
+            const registerMessage = getSafeElement('registerMessage');
+            
+            if (modalBackdrop) modalBackdrop.style.display = 'block';
+            if (loginModal) loginModal.style.display = 'none';
+            if (registerModal) registerModal.style.display = 'block';
+            if (userInfoModal) userInfoModal.style.display = 'none';
+            if (imageRecognitionModal) imageRecognitionModal.style.display = 'none';
+            if (registerMessage) registerMessage.innerHTML = '';
+            
+            // 清空注册表单
+            const registerFields = [
+                'registerStudentId', 'registerUsername', 'registerPassword',
+                'registerEmail', 'registerPhone', 'registerDormitory'
+            ];
+            
+            registerFields.forEach(id => {
+                const field = getSafeElement(id);
+                if (field) field.value = '';
+            });
+        }
+        
+        function showUserInfo() {
+            const modalBackdrop = getSafeElement('modalBackdrop');
+            const loginModal = getSafeElement('loginModal');
+            const registerModal = getSafeElement('registerModal');
+            const userInfoModal = getSafeElement('userInfoModal');
+            const imageRecognitionModal = getSafeElement('imageRecognitionModal');
+            
+            if (modalBackdrop) modalBackdrop.style.display = 'block';
+            if (loginModal) loginModal.style.display = 'none';
+            if (registerModal) registerModal.style.display = 'none';
+            if (userInfoModal) userInfoModal.style.display = 'block';
+            if (imageRecognitionModal) imageRecognitionModal.style.display = 'none';
+            
+            if (currentUser) {
+                const userFields = [
+                    {id: 'userName', value: currentUser.username || '用户'},
+                    {id: 'userStudentId', value: currentUser.studentId || ''},
+                    {id: 'userPoints', value: currentUser.totalPoints || 0},
+                    {id: 'userLevel', value: currentUser.levelName || '普通用户'},
+                    {id: 'userEmail', value: currentUser.email || '未设置'},
+                    {id: 'userPhone', value: currentUser.phone || '未设置'},
+                    {id: 'userDormitory', value: currentUser.dormitory || '未设置'}
+                ];
+                
+                userFields.forEach(field => {
+                    const element = getSafeElement(field.id);
+                    if (element) element.textContent = field.value;
+                });
+            }
+        }
+        
+        function showImageRecognition() {
+            const modalBackdrop = getSafeElement('modalBackdrop');
+            const loginModal = getSafeElement('loginModal');
+            const registerModal = getSafeElement('registerModal');
+            const userInfoModal = getSafeElement('userInfoModal');
+            const imageRecognitionModal = getSafeElement('imageRecognitionModal');
+            
+            if (modalBackdrop) modalBackdrop.style.display = 'block';
+            if (loginModal) loginModal.style.display = 'none';
+            if (registerModal) registerModal.style.display = 'none';
+            if (userInfoModal) userInfoModal.style.display = 'none';
+            if (imageRecognitionModal) imageRecognitionModal.style.display = 'block';
+            
+            resetRecognition();
+        }
+        
+        function closeModal() {
+    const elements = [
+        'modalBackdrop', 'loginModal', 'registerModal',
+        'userInfoModal', 'imageRecognitionModal', 'pointsExchangeModal'
+    ];
+    
+    elements.forEach(id => {
+        const element = getSafeElement(id);
+        if (element) element.style.display = 'none';
+    });
+}
+        
+        // ==== 用户认证功能 ====
+        async function login(event) {
+            event.preventDefault();
+            
+            const studentId = getSafeElement('loginStudentId')?.value;
+            const password = getSafeElement('loginPassword')?.value;
+            
+            if (!studentId || !password) {
+                showMessage('loginMessage', '请填写学号和密码', 'error');
+                return;
+            }
+            
+            const loginMessage = getSafeElement('loginMessage');
+            if (!loginMessage) return;
+            
+            showLoading(loginMessage, '正在登录中...');
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({studentId: studentId, password: password})
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.code === 200) {
+                    const userData = result.data;
+                    currentToken = userData.accessToken;
+                    currentUser = userData;
+                    
+                    localStorage.setItem('token', currentToken);
+                    localStorage.setItem('user', JSON.stringify(currentUser));
+                    
+                    updateUIForLoggedIn();
+                    closeModal();
+                    showMessage('loginMessage', '✅ 登录成功！欢迎使用智能垃圾分类助手', 'success');
+                    
+                    console.log('登录成功，用户信息:', currentUser);
+                } else {
+                    throw new Error(result.message || `登录失败: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('登录错误:', error);
+                showMessage('loginMessage', `❌ ${error.message}`, 'error');
+            }
+        }
+        
+        async function register(event) {
+            event.preventDefault();
+            
+            const studentId = getSafeElement('registerStudentId')?.value;
+            const username = getSafeElement('registerUsername')?.value;
+            const password = getSafeElement('registerPassword')?.value;
+            const email = getSafeElement('registerEmail')?.value;
+            const phone = getSafeElement('registerPhone')?.value;
+            const dormitory = getSafeElement('registerDormitory')?.value;
+            
+            if (!studentId || !/^\d{10,15}$/.test(studentId)) {
+                showMessage('registerMessage', '学号必须是10-15位数字', 'error');
+                return;
+            }
+            
+            if (!username || username.length < 2 || username.length > 20) {
+                showMessage('registerMessage', '用户名必须是2-20位字符', 'error');
+                return;
+            }
+            
+            if (!password || !/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{6,20}$/.test(password)) {
+                showMessage('registerMessage', '密码必须包含字母和数字，长度6-20位', 'error');
+                return;
+            }
+            
+            const registerMessage = getSafeElement('registerMessage');
+            if (!registerMessage) return;
+            
+            showLoading(registerMessage, '正在注册中...');
+            
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        studentId: studentId,
+                        username: username,
+                        password: password,
+                        email: email || null,
+                        phone: phone || null,
+                        dormitory: dormitory || null
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.code === 200) {
+                    const userData = result.data;
+                    currentToken = userData.accessToken;
+                    currentUser = userData;
+                    
+                    localStorage.setItem('token', currentToken);
+                    localStorage.setItem('user', JSON.stringify(currentUser));
+                    
+                    updateUIForLoggedIn();
+                    closeModal();
+                    showMessage('registerMessage', '✅ 注册成功！已自动登录', 'success');
+                } else {
+                    throw new Error(result.message || `注册失败: ${response.status}`);
+                }
+            } catch (error) {
+                console.error('注册错误:', error);
+                showMessage('registerMessage', `❌ ${error.message}`, 'error');
+            }
+        }
+        
+        async function logout() {
+            try {
+                if (currentToken) {
+                    await fetch('/api/auth/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${currentToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('登出请求失败:', error);
+            } finally {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                currentUser = null;
+                currentToken = null;
+                updateUIForNotLoggedIn();
+                closeModal();
+            }
+        }
+        
+        // ==== 图片识别功能 ====
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.dataTransfer.dropEffect = 'copy';
+            event.currentTarget.classList.add('dragover');
+        }
+        
+        function handleDragLeave(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.currentTarget.classList.remove('dragover');
+        }
+        
+        function handleDrop(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.currentTarget.classList.remove('dragover');
+            
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+        
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
             if (file) {
-                setSelectedFile(file);
+                handleFile(file);
+            }
+        }
+        
+        function handleFile(file) {
+            if (!file.type.match('image.*')) {
+                showRecognitionMessage('请选择图片文件', 'error');
+                return;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) {
+                showRecognitionMessage('图片大小不能超过5MB', 'error');
+                return;
+            }
+            
+            selectedFile = file;
+            
+            const fileName = getSafeElement('fileName');
+            const fileSize = getSafeElement('fileSize');
+            const imagePreview = getSafeElement('imagePreview');
+            const recognizeBtn = getSafeElement('recognizeBtn');
+            
+            if (fileName) fileName.textContent = file.name;
+            if (fileSize) fileSize.textContent = formatFileSize(file.size);
+            if (imagePreview) imagePreview.style.display = 'block';
+            if (recognizeBtn) recognizeBtn.disabled = false;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const previewImage = getSafeElement('previewImage');
+                if (previewImage) previewImage.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+            
+            const recognitionResult = getSafeElement('recognitionResult');
+            if (recognitionResult) recognitionResult.style.display = 'none';
+            
+            showRecognitionMessage('图片已选择，点击"开始识别"按钮进行分析', 'info');
+        }
+        
+        function removeImage() {
+            selectedFile = null;
+            const imageFile = getSafeElement('imageFile');
+            if (imageFile) imageFile.value = '';
+            
+            const imagePreview = getSafeElement('imagePreview');
+            if (imagePreview) imagePreview.style.display = 'none';
+            
+            const recognizeBtn = getSafeElement('recognizeBtn');
+            if (recognizeBtn) recognizeBtn.disabled = true;
+            
+            const recognitionResult = getSafeElement('recognitionResult');
+            if (recognitionResult) recognitionResult.style.display = 'none';
+            
+            showRecognitionMessage('', 'info');
+        }
+        
+        function resetRecognition() {
+            removeImage();
+            const recognitionResult = getSafeElement('recognitionResult');
+            if (recognitionResult) recognitionResult.style.display = 'none';
+        }
+        
+        async function recognizeImage() {
+            if (!selectedFile) {
+                showRecognitionMessage('请先选择图片', 'error');
+                return;
+            }
+            
+            const messageDiv = getSafeElement('recognitionMessage');
+            if (!messageDiv) return;
+            
+            showLoading(messageDiv, '正在识别中，请稍候...');
+            
+            const recognizeBtn = getSafeElement('recognizeBtn');
+            if (recognizeBtn) recognizeBtn.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            
+            try {
+                console.log('开始发送识别请求...');
+                const response = await fetch('/api/garbage/recognize', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`识别失败: ${response.status}`);
+                }
+                
+                const responseText = await response.text();
+                console.log('原始响应:', responseText);
+                
+                let result;
+                
+                try {
+                    result = JSON.parse(responseText);
+                    console.log('JSON解析成功:', result);
+                } catch (jsonError) {
+                    console.warn('直接JSON解析失败:', jsonError);
+                    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        try {
+                            result = JSON.parse(jsonMatch[0]);
+                        } catch (parseError) {
+                            console.error('提取的JSON解析失败:', parseError);
+                            result = createMockResultFromText(responseText);
+                        }
+                    } else {
+                        throw new Error('服务器返回的数据格式不正确');
+                    }
+                }
+                
+                displayRecognitionResult(result);
+                
+            } catch (error) {
+                console.error('识别错误:', error);
+                showRecognitionMessage(`❌ ${error.message}`, 'error');
+                const recognizeBtn = getSafeElement('recognizeBtn');
+                if (recognizeBtn) recognizeBtn.disabled = false;
+            }
+        }
+        
+        function createMockResultFromText(text) {
+            const result = {
+                items: [],
+                confidence: 0,
+                suggestion: '',
+                points: 0
+            };
+            
+            const confidenceMatch = text.match(/置信度:\s*([\d.]+)/);
+            if (confidenceMatch) result.confidence = parseFloat(confidenceMatch[1]);
+            
+            const pointsMatch = text.match(/可获得\s*(\d+)\s*积分/);
+            if (pointsMatch) result.points = parseInt(pointsMatch[1]);
+            
+            const suggestionMatch = text.match(/建议[：:]\s*([^\n]+)/);
+            if (suggestionMatch) result.suggestion = suggestionMatch[1].trim();
+            
+            const itemLines = text.split('\n').filter(line => line.includes('物品:'));
+            itemLines.forEach(line => {
+                const itemMatch = line.match(/物品:\s*([^,]+),\s*分类:\s*([^,]+),\s*分数:\s*([\d.]+)/);
+                if (itemMatch) {
+                    result.items.push({
+                        name: itemMatch[1].trim(),
+                        category: itemMatch[2].trim(),
+                        score: parseFloat(itemMatch[3])
+                    });
+                }
+            });
+            
+            return result;
+        }
+        
+        function displayRecognitionResult(result) {
+            console.log('显示识别结果:', result);
+            
+            const recognitionResult = getSafeElement('recognitionResult');
+            if (recognitionResult) recognitionResult.style.display = 'block';
+            
+            // 总体置信度
+            const confidence = result.confidence || 0;
+            const confidencePercent = Math.round(confidence * 100);
+            const overallConfidence = getSafeElement('overallConfidence');
+            const confidenceBar = getSafeElement('confidenceBar');
+            
+            if (overallConfidence) overallConfidence.textContent = `${confidencePercent}%`;
+            if (confidenceBar) confidenceBar.style.width = `${confidencePercent}%`;
+            
+            // 投放建议
+            const suggestion = result.suggestion || '请根据识别结果分类投放';
+            const suggestionText = getSafeElement('suggestionText');
+            if (suggestionText) suggestionText.textContent = suggestion;
+            
+            // 检查是否有有害垃圾
+            const hasHazardous = result.items && result.items.some(item => 
+                item.category && item.category.includes('有害')
+            );
+            
+            const hazardWarning = getSafeElement('hazardWarning');
+            if (hazardWarning) {
+                hazardWarning.style.display = hasHazardous ? 'block' : 'none';
+            }
+            
+            // 积分奖励
+            const pointsEarned = getSafeElement('pointsEarned');
+            const pointsValue = getSafeElement('pointsValue');
+            if (pointsEarned && pointsValue) {
+                if (result.points && result.points > 0) {
+                    pointsEarned.style.display = 'block';
+                    pointsValue.textContent = result.points;
+                    
+                    if (currentUser) {
+                        currentUser.totalPoints = (currentUser.totalPoints || 0) + result.points;
+                        localStorage.setItem('user', JSON.stringify(currentUser));
+                        updateUIForLoggedIn();
+                    }
+                } else {
+                    pointsEarned.style.display = 'none';
+                }
+            }
+            
+            // 识别到的物品列表
+            const itemsList = getSafeElement('itemsList');
+            const itemsCount = getSafeElement('itemsCount');
+            const categoriesCount = getSafeElement('categoriesCount');
+            
+            let itemsCountValue = 0;
+            const categoryStats = {};
+            const uniqueCategories = new Set();
+            
+            if (itemsList) itemsList.innerHTML = '';
+            
+            if (result.items && Array.isArray(result.items)) {
+                itemsCountValue = result.items.length;
+                result.items.sort((a, b) => (b.score || 0) - (a.score || 0));
+                
+                result.items.forEach((item, index) => {
+                    const category = item.category || '未知';
+                    const name = item.name || '未知物品';
+                    const score = item.score || 0;
+                    
+                    categoryStats[category] = (categoryStats[category] || 0) + 1;
+                    uniqueCategories.add(category);
+                    
+                    if (itemsList) {
+                        const categoryClass = getCategoryClass(category);
+                        const categoryName = getCategoryName(category);
+                        const scorePercent = Math.round(score * 100);
+                        const borderClass = getBorderClass(category);
+                        
+                        const itemElement = document.createElement('div');
+                        itemElement.className = `result-item bg-white p-4 rounded-lg shadow-sm border border-gray-100 ${borderClass}`;
+                        itemElement.innerHTML = `
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="flex-1">
+                                    <div class="flex items-center mb-1">
+                                        <h6 class="font-semibold text-gray-800 mr-2">${name}</h6>
+                                        <span class="category-badge ${categoryClass}">${categoryName}</span>
+                                    </div>
+                                    <div class="flex items-center text-sm">
+                                        <span class="text-gray-500 mr-3">置信度: ${scorePercent}%</span>
+                                        <div class="flex-1 max-w-xs">
+                                            <div class="progress-bar">
+                                                <div class="progress-fill" style="width: ${scorePercent}%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="text-gray-400 text-sm">#${index + 1}</span>
+                            </div>
+                        `;
+                        itemsList.appendChild(itemElement);
+                    }
+                });
+            }
+            
+            if (itemsCount) itemsCount.textContent = `${itemsCountValue}个`;
+            if (categoriesCount) categoriesCount.textContent = `${uniqueCategories.size}类`;
+            
+            // 显示分类统计
+            displayCategoryStats(categoryStats);
+            
+            // 显示成功消息
+            showRecognitionMessage('✅ 识别完成！查看下方识别结果', 'success');
+            const recognizeBtn = getSafeElement('recognizeBtn');
+            if (recognizeBtn) recognizeBtn.disabled = false;
+        }
+        
+        function displayCategoryStats(categoryStats) {
+            const statsContainer = getSafeElement('categoryStats');
+            if (!statsContainer) return;
+            
+            statsContainer.innerHTML = '';
+            
+            const categories = [
+                { id: '可回收物', name: '可回收物', color: 'blue', icon: 'recycle' },
+                { id: '厨余垃圾', name: '厨余垃圾', color: 'green', icon: 'apple-alt' },
+                { id: '有害垃圾', name: '有害垃圾', color: 'red', icon: 'radiation-alt' },
+                { id: '其他垃圾', name: '其他垃圾', color: 'gray', icon: 'trash-alt' },
+                { id: '未知', name: '未知', color: 'purple', icon: 'question-circle' }
+            ];
+            
+            categories.forEach(category => {
+                const count = categoryStats[category.id] || categoryStats[category.name] || 0;
+                if (count > 0) {
+                    const statElement = document.createElement('div');
+                    statElement.className = `bg-${category.color}-50 p-3 rounded-lg text-center`;
+                    statElement.innerHTML = `
+                        <div class="flex flex-col items-center">
+                            <div class="w-10 h-10 rounded-full bg-${category.color}-100 flex items-center justify-center mb-1">
+                                <i class="fas fa-${category.icon} text-${category.color}-600"></i>
+                            </div>
+                            <span class="text-sm text-gray-600">${category.name}</span>
+                            <span class="text-lg font-bold text-${category.color}-600">${count}</span>
+                        </div>
+                    `;
+                    statsContainer.appendChild(statElement);
+                }
+            });
+        }
+        
+        function getCategoryClass(category) {
+            if (category.includes('可回收')) return 'category-recyclable';
+            if (category.includes('厨余')) return 'category-kitchen';
+            if (category.includes('有害')) return 'category-hazardous';
+            if (category.includes('其他')) return 'category-other';
+            return 'category-unknown';
+        }
+        
+        function getCategoryName(category) {
+            return category || '未知';
+        }
+        
+        function getBorderClass(category) {
+            if (category.includes('可回收')) return 'border-l-blue-500';
+            if (category.includes('厨余')) return 'border-l-green-500';
+            if (category.includes('有害')) return 'border-l-red-500';
+            if (category.includes('其他')) return 'border-l-gray-500';
+            return 'border-l-purple-500';
+        }
+        
+        // ==== 辅助函数 ====
+        function showMessage(elementId, message, type) {
+            const element = getSafeElement(elementId);
+            if (!element) {
+                console.warn(`showMessage: 元素 #${elementId} 不存在`);
+                return;
+            }
+            
+            const colorClass = type === 'error' ? 'red' : type === 'success' ? 'green' : 'blue';
+            element.innerHTML = `
+                <div class="bg-${colorClass}-50 border-l-4 border-${colorClass}-500 p-3 rounded-lg">
+                    <p class="text-${colorClass}-800">${message}</p>
+                </div>
+            `;
+        }
+        
+        function showRecognitionMessage(message, type) {
+            showMessage('recognitionMessage', message, type);
+        }
+        
+        function showLoading(element, message) {
+            let elementRef;
+            if (typeof element === 'string') {
+                elementRef = getSafeElement(element);
+            } else {
+                elementRef = element;
+            }
+            
+            if (!elementRef) {
+                console.warn('showLoading: 元素不存在', element);
+                return;
+            }
+            
+            elementRef.innerHTML = `
+                <div class="flex items-center p-3 bg-blue-50 rounded-lg">
+                    <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-3"></div>
+                    <span>${message}</span>
+                </div>
+            `;
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // ==== 其他功能 ====
+        // ==== 其他功能 ====
+function showPointsExchange() {
+    if (!currentUser) {
+        alert('请先登录');
+        showLogin();
+        return;
+    }
+    
+    console.log('当前用户:', currentUser);
+    console.log('当前Token:', currentToken ? '存在' : '不存在');
+    console.log('Token值:', currentToken);
+    
+    // 如果 token 不存在，尝试从 localStorage 重新获取
+    if (!currentToken) {
+        const savedToken = localStorage.getItem('token');
+        if (savedToken) {
+            currentToken = savedToken;
+            console.log('从 localStorage 恢复 token');
+        }
+    }
+    
+    const modalBackdrop = getSafeElement('modalBackdrop');
+    const pointsExchangeModal = getSafeElement('pointsExchangeModal');
+    if (!modalBackdrop || !pointsExchangeModal) return;
+    
+    modalBackdrop.style.display = 'block';
+    pointsExchangeModal.style.display = 'block';
+    
+    // 隐藏其他模态框
+    ['loginModal', 'registerModal', 'userInfoModal', 'imageRecognitionModal'].forEach(id => {
+        const element = getSafeElement(id);
+        if (element) element.style.display = 'none';
+    });
+    
+    // 更新当前积分显示
+    const exchangeCurrentPoints = getSafeElement('exchangeCurrentPoints');
+    if (exchangeCurrentPoints && currentUser) {
+        exchangeCurrentPoints.textContent = currentUser.totalPoints || 0;
+    }
+    
+    // 加载商品列表
+    loadExchangeItems();
+}
+
+// ========== 积分兑换相关函数 ==========
+
+let exchangeItemsData = [];
+let currentExchangeTab = 'all';
+let exchangeRecordsData = [];
+let selectedItemForExchange = null;
+
+// 加载可兑换商品
+async function loadExchangeItems() {
+    const exchangeItemsContainer = getSafeElement('exchangeItemsContainer');
+    if (!exchangeItemsContainer) return;
+    
+    // 添加 token 验证
+    if (!currentToken) {
+        console.error('用户未登录，无法加载商品');
+        exchangeItemsContainer.innerHTML = `
+            <div class="text-center py-8">
+                <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-4"></i>
+                <p class="text-red-600">请先登录</p>
+                <button onclick="showLogin()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                    立即登录
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    showLoading(exchangeItemsContainer, '正在加载优惠券...');
+    
+    try {
+        const response = await fetch('/api/points/exchange-items', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${currentToken}`,
+                'Content-Type': 'application/json'
             }
         });
         
-        // 设置选中的文件
-        function setSelectedFile(file) {
-            currentFile = file;
-            
-            // 显示文件信息
-            const fileInfo = document.getElementById('fileInfo');
-            const fileName = document.getElementById('fileName');
-            const fileSize = document.getElementById('fileSize');
-            
-            fileName.textContent = file.name;
-            fileSize.textContent = `大小: ${(file.size / 1024 / 1024).toFixed(2)} MB`;
-            fileInfo.classList.remove('hidden');
-            
-            // 自动开始识别
-            startRecognition();
-        }
-        
-        // 清除文件
-        function clearFile() {
-            currentFile = null;
-            document.getElementById('imageUpload').value = '';
-            document.getElementById('fileInfo').classList.add('hidden');
-            document.getElementById('recognitionResult').classList.add('hidden');
-        }
-        
-        // 开始识别
-        function startRecognition() {
-            if (!currentFile) {
-                showError('请先选择图片文件');
+        if (!response.ok) {
+            // 如果是403，显示模拟数据
+            if (response.status === 403) {
+                console.warn('API访问受限，显示演示数据');
+                showMockExchangeItems();
                 return;
             }
+            throw new Error(`加载失败: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.code === 200) {
+            // 处理数据
+            exchangeItemsData = (result.data.items || result.data || []).map(item => ({
+                itemId: item.itemId || item.id,
+                name: item.name || '未命名',
+                description: item.description || '校园消费券',
+                pointsRequired: item.pointsRequired || 0,
+                stock: item.stock || 0,
+                category: item.category || 'dining',
+                validDays: item.validDays || 30,
+                usageLocation: item.usageLocation || '全校通用'
+            }));
             
-            // 验证文件类型
-            if (!currentFile.type.startsWith('image/')) {
-                showError('请选择图片文件（JPG/PNG格式）');
-                return;
-            }
-            
-            // 显示识别结果区域
-            const resultArea = document.getElementById('recognitionResult');
-            const resultContent = document.getElementById('resultContent');
-            
-            resultArea.classList.remove('hidden');
-            resultContent.innerHTML = `
-                <div class="flex flex-col items-center justify-center p-12 bg-gray-50 rounded-xl">
-                    <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-purple-600 mb-6"></div>
-                    <p class="text-xl font-medium text-gray-700 mb-2">🔍 正在识别中</p>
-                    <p class="text-gray-500">请稍候，AI正在分析图片...</p>
-                    <div class="w-full bg-gray-200 rounded-full h-2 mt-6">
-                        <div id="progressBar" class="bg-purple-600 h-2 rounded-full transition-all duration-300" style="width: 30%"></div>
-                    </div>
+            renderExchangeItems();
+        } else {
+            throw new Error(result.message || '加载失败');
+        }
+    } catch (error) {
+        console.error('加载商品错误:', error);
+        // 显示模拟数据
+        showMockExchangeItems();
+    }
+}
+
+// 显示模拟数据
+function showMockExchangeItems() {
+    exchangeItemsData = [
+        {
+            itemId: '1',
+            name: '食堂2元消费券',
+            description: '可在食堂任意窗口使用',
+            pointsRequired: 200,
+            stock: 100,
+            category: 'dining',
+            validDays: 30,
+            usageLocation: '学校食堂'
+        },
+        {
+            itemId: '2',
+            name: '早餐2元代金券',
+            description: '限早餐时段使用（7:00-9:00）',
+            pointsRequired: 150,
+            stock: 80,
+            category: 'dining',
+            validDays: 30,
+            usageLocation: '食堂早餐窗口'
+        },
+        {
+            itemId: '3',
+            name: '校园超市9.5折券',
+            description: '校园超市全场通用（烟酒除外）',
+            pointsRequired: 300,
+            stock: 50,
+            category: 'shop',
+            validDays: 15,
+            usageLocation: '校园超市'
+        }
+    ];
+    
+    renderExchangeItems();
+    
+    const exchangeItemsContainer = getSafeElement('exchangeItemsContainer');
+    if (exchangeItemsContainer) {
+        const warning = document.createElement('div');
+        warning.className = 'bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg mt-4';
+        warning.innerHTML = `
+            <div class="flex items-start">
+                <i class="fas fa-info-circle text-blue-500 mt-1 mr-2"></i>
+                <div>
+                    <p class="text-sm text-blue-800">
+                        <strong>提示：</strong>正确分类垃圾可获得积分，每正确分类1次可获得10-50积分
+                    </p>
                 </div>
-            `;
-            
-            // 模拟进度条
-            let progress = 30;
-            const progressInterval = setInterval(() => {
-                progress += 10;
-                if (progress >= 90) clearInterval(progressInterval);
-                document.getElementById('progressBar').style.width = progress + '%';
-            }, 300);
-            
-            // 准备FormData
-            const formData = new FormData();
-            formData.append('file', currentFile);
-            
-            // 发送请求
-            fetch('/api/garbage/recognize', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                clearInterval(progressInterval);
-                document.getElementById('progressBar').style.width = '100%';
-                
-                if (!response.ok) {
-                    return response.text().then(text => {
-                        throw new Error(`HTTP ${response.status}: ${text}`);
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                setTimeout(() => {
-                    displayRecognitionResult(data);
-                }, 500);
-            })
-            .catch(error => {
-                console.error('识别失败:', error);
-                showError('识别失败: ' + error.message);
-            });
-        }
+            </div>
+        `;
+        exchangeItemsContainer.appendChild(warning);
+    }
+}
+
+// 渲染商品列表
+function renderExchangeItems() {
+    const exchangeItemsContainer = getSafeElement('exchangeItemsContainer');
+    if (!exchangeItemsContainer) return;
+    
+    if (!exchangeItemsData || exchangeItemsData.length === 0) {
+        exchangeItemsContainer.innerHTML = `
+            <div class="text-center py-8">
+                <i class="fas fa-box-open text-gray-400 text-3xl mb-4"></i>
+                <p class="text-gray-500">暂无优惠券</p>
+                <p class="text-sm text-gray-400 mt-2">更多券种即将上线</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">';
+    
+    exchangeItemsData.forEach(item => {
+        const isAvailable = item.stock > 0;
+        const canAfford = currentUser && currentUser.totalPoints >= item.pointsRequired;
+        const isDining = item.category === 'dining';
         
-        // 显示识别结果
-        function displayRecognitionResult(data) {
-            const resultContent = document.getElementById('resultContent');
-            
-            if (!data.items || data.items.length === 0) {
-                resultContent.innerHTML = `
-                    <div class="bg-yellow-50 border-l-4 border-yellow-500 p-8 rounded-xl">
-                        <div class="flex items-center mb-4">
-                            <i class="fas fa-search text-yellow-500 text-3xl mr-4"></i>
-                            <div>
-                                <h3 class="text-xl font-bold text-yellow-800">未识别到物品</h3>
-                                <p class="text-yellow-600">请尝试上传更清晰的图片</p>
-                            </div>
+        html += `
+            <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow border ${isDining ? 'border-green-100' : 'border-blue-100'}">
+                <div class="p-6">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex-1">
+                            <h4 class="font-bold text-lg text-gray-800 mb-1">${item.name}</h4>
+                            <p class="text-gray-600 text-sm mb-2">${item.description}</p>
                         </div>
-                        <p class="text-yellow-700">${data.suggestion || '可能是图片不清晰或物品不在识别范围内'}</p>
+                        <span class="${isDining ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'} text-xs font-semibold px-3 py-1 rounded-full">
+                            ${isDining ? '食堂券' : '超市券'}
+                        </span>
                     </div>
-                `;
-                return;
-            }
-            
-            // 获取主要识别结果
-            const mainItem = data.items[0];
-            const category = mainItem.category || '未知';
-            const confidence = (mainItem.score * 100).toFixed(1);
-            const points = data.points || 0;
-            
-            // 根据分类设置颜色和垃圾桶颜色
-            let categoryColor, categoryIcon, trashColor, trashEmoji;
-            
-            switch(category) {
-                case '可回收物':
-                    categoryColor = 'blue';
-                    categoryIcon = '♻️';
-                    trashColor = '蓝色';
-                    trashEmoji = '🗑️🔵';
-                    break;
-                case '厨余垃圾':
-                    categoryColor = 'green';
-                    categoryIcon = '🍎';
-                    trashColor = '绿色';
-                    trashEmoji = '🗑️🟢';
-                    break;
-                case '有害垃圾':
-                    categoryColor = 'red';
-                    categoryIcon = '⚠️';
-                    trashColor = '红色';
-                    trashEmoji = '🗑️🔴';
-                    break;
-                case '其他垃圾':
-                    categoryColor = 'gray';
-                    categoryIcon = '🗑️';
-                    trashColor = '灰色';
-                    trashEmoji = '🗑️⚫';
-                    break;
-                default:
-                    categoryColor = 'gray';
-                    categoryIcon = '❓';
-                    trashColor = '灰色';
-                    trashEmoji = '🗑️⚫';
-            }
-            
-            // 构建结果HTML
-            let html = `
-                <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
-                    <!-- 顶部状态栏 -->
-                    <div class="bg-gradient-to-r from-${categoryColor}-500 to-${categoryColor}-600 p-8 text-white">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <div class="text-5xl mr-6">${categoryIcon}</div>
-                                <div>
-                                    <h3 class="text-3xl font-bold">识别成功</h3>
-                                    <p class="opacity-90 mt-1">已成功识别图片内容</p>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-2xl font-bold">置信度</div>
-                                <div class="text-3xl font-bold">${confidence}%</div>
-                            </div>
+                    
+                    <div class="mb-4">
+                        <div class="flex items-center text-sm text-gray-600 mb-1">
+                            <i class="fas fa-map-marker-alt mr-2"></i>
+                            <span>适用: ${item.usageLocation}</span>
+                        </div>
+                        <div class="flex items-center text-sm text-gray-600">
+                            <i class="far fa-calendar-alt mr-2"></i>
+                            <span>有效期: ${item.validDays}天</span>
                         </div>
                     </div>
                     
-                    <!-- 主要内容 -->
-                    <div class="p-8">
-                        <!-- 识别结果卡片 -->
-                        <div class="mb-8">
-                            <h4 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                                <i class="fas fa-box mr-3 text-${categoryColor}-600"></i>
-                                主要识别物品
-                            </h4>
-                            <div class="bg-gradient-to-r from-${categoryColor}-50 to-${categoryColor}-100 p-6 rounded-xl border-l-4 border-${categoryColor}-400">
-                                <div class="flex items-center">
-                                    <div class="text-4xl mr-5">${categoryIcon}</div>
-                                    <div class="flex-1">
-                                        <p class="font-bold text-2xl text-${categoryColor}-800">${mainItem.name}</p>
-                                        <p class="text-${categoryColor}-600 mt-1">AI识别结果</p>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="text-sm text-gray-500">置信度</div>
-                                        <div class="text-2xl font-bold text-${categoryColor}-700">${confidence}%</div>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="space-y-3 mb-6">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">所需积分</span>
+                            <span class="text-xl font-bold text-red-600">${item.pointsRequired}</span>
                         </div>
-                        
-                        <!-- 分类结果网格 -->
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                            <div class="bg-gray-50 p-6 rounded-xl text-center">
-                                <div class="text-3xl mb-3">🏷️</div>
-                                <div class="text-sm text-gray-500 mb-2">垃圾分类</div>
-                                <div class="text-2xl font-bold text-${categoryColor}-600">${category}</div>
-                            </div>
-                            
-                            <div class="bg-gray-50 p-6 rounded-xl text-center">
-                                <div class="text-3xl mb-3">${trashEmoji}</div>
-                                <div class="text-sm text-gray-500 mb-2">投放垃圾桶</div>
-                                <div class="text-2xl font-bold text-${categoryColor}-600">${trashColor}垃圾桶</div>
-                            </div>
-                            
-                            ${points > 0 ? `
-                            <div class="bg-yellow-50 p-6 rounded-xl text-center border-l-4 border-yellow-400">
-                                <div class="text-3xl mb-3">🏆</div>
-                                <div class="text-sm text-gray-500 mb-2">积分奖励</div>
-                                <div class="text-2xl font-bold text-yellow-600">+${points} 积分</div>
-                            </div>
-                            ` : `
-                            <div class="bg-gray-50 p-6 rounded-xl text-center">
-                                <div class="text-3xl mb-3">📊</div>
-                                <div class="text-sm text-gray-500 mb-2">总体置信度</div>
-                                <div class="text-2xl font-bold text-gray-600">${(data.confidence * 100).toFixed(1)}%</div>
-                            </div>
-                            `}
-                        </div>
-                        
-                        <!-- 处理方法 -->
-                        <div class="mb-8">
-                            <h4 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                                <i class="fas fa-hand-paper mr-3 text-${categoryColor}-600"></i>
-                                处理方法
-                            </h4>
-                            <div class="bg-gray-50 p-6 rounded-xl">
-                                <p class="text-lg text-gray-700">${mainItem.disposalMethod || '请按照垃圾分类标准进行处理'}</p>
-                            </div>
-                        </div>
-                        
-                        <!-- 最终建议 -->
-                        <div class="bg-blue-50 border-l-4 border-blue-400 p-6 rounded-xl">
-                            <div class="flex items-start">
-                                <i class="fas fa-lightbulb text-blue-500 text-2xl mr-4 mt-1"></i>
-                                <div>
-                                    <p class="font-bold text-blue-800 text-lg mb-2">💡 投放建议</p>
-                                    <p class="text-blue-700 text-lg">
-                                        <span class="font-bold">${mainItem.name}</span> 
-                                        属于 <span class="font-bold text-${categoryColor}-600">${category}</span>，
-                                        请投入 <span class="font-bold text-${categoryColor}-600">${trashColor}垃圾桶</span>
-                                        ${points > 0 ? `，可获得 <span class="font-bold text-yellow-600">${points}积分</span> 奖励！` : ''}
-                                    </p>
-                                </div>
-                            </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">剩余库存</span>
+                            <span class="font-semibold ${item.stock > 10 ? 'text-green-600' : item.stock > 0 ? 'text-yellow-600' : 'text-red-600'}">
+                                ${item.stock} 张
+                            </span>
                         </div>
                     </div>
+                    
+                    <button onclick="showExchangeConfirm('${item.itemId}')" 
+                            class="w-full py-3 ${isAvailable && canAfford ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700' : 'bg-gray-300 cursor-not-allowed'} text-white rounded-lg font-semibold transition"
+                            ${!isAvailable || !canAfford ? 'disabled' : ''}>
+                        ${!isAvailable ? '已兑完' : !canAfford ? '积分不足' : '立即兑换'}
+                    </button>
+                    
+                    ${!canAfford && isAvailable ? `
+                        <p class="text-center text-sm text-gray-500 mt-2">
+                            还需 ${item.pointsRequired - currentUser.totalPoints} 积分
+                        </p>
+                    ` : ''}
                 </div>
-            `;
-            
-            resultContent.innerHTML = html;
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    
+    exchangeItemsContainer.innerHTML = html;
+}
+
+// 切换标签页
+function switchExchangeTab(tab) {
+    currentExchangeTab = tab;
+    
+    // 更新标签按钮样式
+    const allTab = getSafeElement('tabAll');
+    const recordsTab = getSafeElement('tabRecords');
+    
+    if (allTab) allTab.classList.toggle('tab-active', tab === 'all');
+    if (recordsTab) recordsTab.classList.toggle('tab-active', tab === 'records');
+    
+    // 显示对应的内容
+    const exchangeItemsContainer = getSafeElement('exchangeItemsContainer');
+    const exchangeRecordsContainer = getSafeElement('exchangeRecordsContainer');
+    
+    if (tab === 'records') {
+        if (exchangeItemsContainer) exchangeItemsContainer.style.display = 'none';
+        if (exchangeRecordsContainer) {
+            exchangeRecordsContainer.style.display = 'block';
+            loadExchangeRecords();
         }
+    } else {
+        if (exchangeItemsContainer) exchangeItemsContainer.style.display = 'block';
+        if (exchangeRecordsContainer) exchangeRecordsContainer.style.display = 'none';
+        renderExchangeItems();
+    }
+}
+
+// 显示兑换确认弹窗
+function showExchangeConfirm(itemId) {
+    const item = exchangeItemsData.find(i => i.itemId === itemId);
+    if (!item) return;
+    
+    selectedItemForExchange = item;
+    
+    const modalBackdrop = getSafeElement('modalBackdrop');
+    const exchangeConfirmModal = getSafeElement('exchangeConfirmModal');
+    
+    if (modalBackdrop && exchangeConfirmModal) {
+        modalBackdrop.style.display = 'block';
+        exchangeConfirmModal.style.display = 'block';
         
-        // API测试函数
-        async function testCategories() {
-            const apiTestResult = document.getElementById('apiTestResult');
-            apiTestResult.innerHTML = `
-                <div class="flex items-center p-4 bg-blue-50 rounded-lg">
-                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
-                    <span>正在测试分类API...</span>
+        // 显示确认信息
+        const confirmInfo = getSafeElement('exchangeConfirmInfo');
+        if (confirmInfo) {
+            confirmInfo.innerHTML = `
+                <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                    <h5 class="font-bold text-lg mb-2">${item.name}</h5>
+                    <p class="text-gray-600 mb-1">${item.description}</p>
+                    <p class="text-gray-600 text-sm">适用: ${item.usageLocation}</p>
                 </div>
-            `;
-            
-            try {
-                const response = await fetch('/api/categories');
-                const data = await response.json();
                 
-                apiTestResult.innerHTML = `
-                    <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg">
-                        <div class="flex items-center">
-                            <i class="fas fa-check-circle text-green-500 mr-3 text-xl"></i>
-                            <div>
-                                <p class="font-bold text-green-800">✅ 分类API测试成功</p>
-                                <p class="text-green-600">状态码: ${response.status}，数据条数: ${data.data?.length || 0}</p>
-                            </div>
-                        </div>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-700">所需积分:</span>
+                        <span class="font-bold text-red-600">${item.pointsRequired}</span>
                     </div>
-                `;
-            } catch (error) {
-                apiTestResult.innerHTML = `
-                    <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
-                        <div class="flex items-center">
-                            <i class="fas fa-times-circle text-red-500 mr-3 text-xl"></i>
-                            <div>
-                                <p class="font-bold text-red-800">❌ 分类API测试失败</p>
-                                <p class="text-red-600">${error.message}</p>
-                            </div>
-                        </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-700">当前积分:</span>
+                        <span class="font-bold text-green-600">${currentUser.totalPoints || 0}</span>
                     </div>
-                `;
-            }
-        }
-        
-        // 检查服务状态
-        async function checkServiceStatus() {
-            const apiTestResult = document.getElementById('apiTestResult');
-            apiTestResult.innerHTML = `
-                <div class="flex items-center p-4 bg-blue-50 rounded-lg">
-                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
-                    <span>正在检查服务状态...</span>
+                    <div class="flex justify-between border-t pt-3">
+                        <span class="text-gray-700">兑换后剩余:</span>
+                        <span class="font-bold text-blue-600">${currentUser.totalPoints - item.pointsRequired}</span>
+                    </div>
                 </div>
             `;
-            
-            try {
-                const response = await fetch('/api/categories');
-                if (response.ok) {
-                    apiTestResult.innerHTML = `
-                        <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg">
-                            <div class="flex items-center">
-                                <i class="fas fa-server text-green-500 mr-3 text-xl"></i>
-                                <div>
-                                    <p class="font-bold text-green-800">✅ 服务运行正常</p>
-                                    <p class="text-green-600">后端服务已成功连接并响应</p>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                apiTestResult.innerHTML = `
-                    <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
-                        <div class="flex items-center">
-                            <i class="fas fa-server text-red-500 mr-3 text-xl"></i>
-                            <div>
-                                <p class="font-bold text-red-800">❌ 服务连接失败</p>
-                                <p class="text-red-600">无法连接到后端服务</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
         }
+    }
+}
+
+// 关闭兑换确认弹窗
+function closeExchangeConfirm() {
+    const modalBackdrop = getSafeElement('modalBackdrop');
+    const exchangeConfirmModal = getSafeElement('exchangeConfirmModal');
+    
+    if (modalBackdrop) modalBackdrop.style.display = 'none';
+    if (exchangeConfirmModal) exchangeConfirmModal.style.display = 'none';
+    selectedItemForExchange = null;
+}
+
+// 确认兑换
+async function confirmExchange() {
+    if (!selectedItemForExchange) return;
+    
+    const item = selectedItemForExchange;
+    const exchangeConfirmModal = getSafeElement('exchangeConfirmModal');
+    
+    if (!exchangeConfirmModal) return;
+    
+    // 显示加载状态
+    exchangeConfirmModal.innerHTML = `
+        <div class="text-center py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p class="text-gray-600">正在兑换中，请稍候...</p>
+        </div>
+    `;
+    
+    try {
+        const response = await fetch('/api/points/exchange', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                itemId: item.itemId,
+                quantity: 1
+            })
+        });
         
-        // 显示错误信息
-        function showError(message) {
-            const resultContent = document.getElementById('resultContent');
-            resultContent.innerHTML = `
-                <div class="bg-red-50 border-l-4 border-red-500 p-8 rounded-xl">
-                    <div class="flex items-center mb-4">
-                        <i class="fas fa-exclamation-triangle text-red-500 text-3xl mr-4"></i>
-                        <div>
-                            <h3 class="text-xl font-bold text-red-800">识别错误</h3>
-                            <p class="text-red-600">${message}</p>
-                        </div>
+        const result = await response.json();
+        
+        if (response.ok && result.code === 200) {
+            // 兑换成功
+            exchangeConfirmModal.innerHTML = `
+                <div class="text-center py-6">
+                    <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-check text-green-600 text-2xl"></i>
                     </div>
-                    <button onclick="startRecognition()" class="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
-                        <i class="fas fa-redo mr-2"></i>
-                        重试识别
+                    <h4 class="text-xl font-bold text-gray-800 mb-2">兑换成功！</h4>
+                    <p class="text-gray-600 mb-4">成功兑换 ${item.name}</p>
+                    ${result.data && result.data.couponCode ? `
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                            <p class="text-sm text-gray-600 mb-1">优惠券码：</p>
+                            <p class="text-lg font-bold text-green-700">${result.data.couponCode}</p>
+                            <p class="text-xs text-gray-500 mt-1">可在兑换记录中查看</p>
+                        </div>
+                    ` : ''}
+                    <button onclick="closeExchangeConfirmAndRefresh()" 
+                            class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                        确定
                     </button>
                 </div>
             `;
             
-            document.getElementById('recognitionResult').classList.remove('hidden');
+            // 更新用户积分
+            currentUser.totalPoints -= item.pointsRequired;
+            localStorage.setItem('user', JSON.stringify(currentUser));
+            
+        } else {
+            throw new Error(result.message || '兑换失败');
         }
+    } catch (error) {
+        console.error('兑换错误:', error);
+        
+        exchangeConfirmModal.innerHTML = `
+            <div class="text-center py-6">
+                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-times text-red-600 text-2xl"></i>
+                </div>
+                <h4 class="text-xl font-bold text-gray-800 mb-2">兑换失败</h4>
+                <p class="text-gray-600 mb-4">${error.message}</p>
+                <div class="flex space-x-3">
+                    <button onclick="confirmExchange()" 
+                            class="flex-1 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                        重试
+                    </button>
+                    <button onclick="closeExchangeConfirm()" 
+                            class="flex-1 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200">
+                        取消
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// 关闭确认弹窗并刷新
+function closeExchangeConfirmAndRefresh() {
+    closeExchangeConfirm();
+    
+    // 刷新页面数据
+    loadExchangeItems();
+    updateUIForLoggedIn();
+    
+    // 更新积分显示
+    const exchangeCurrentPoints = getSafeElement('exchangeCurrentPoints');
+    if (exchangeCurrentPoints && currentUser) {
+        exchangeCurrentPoints.textContent = currentUser.totalPoints || 0;
+    }
+}
+
+// 加载兑换记录
+async function loadExchangeRecords() {
+    const exchangeRecordsContainer = getSafeElement('exchangeRecordsContainer');
+    if (!exchangeRecordsContainer) return;
+    
+    showLoading(exchangeRecordsContainer, '正在加载兑换记录...');
+    
+    try {
+        const response = await fetch('/api/points/exchange-records?page=0&size=20', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${currentToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`加载失败: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.code === 200) {
+            exchangeRecordsData = result.data.content || result.data || [];
+            renderExchangeRecords();
+        } else {
+            throw new Error(result.message || '加载记录失败');
+        }
+    } catch (error) {
+        console.error('加载记录错误:', error);
+        showMockExchangeRecords();
+    }
+}
+
+// 显示模拟兑换记录
+function showMockExchangeRecords() {
+    exchangeRecordsData = [
+        {
+            itemName: '食堂2元消费券',
+            exchangeTime: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+            pointsUsed: 200,
+            status: '已完成',
+            couponCode: 'ST20241234001',
+            validUntil: new Date(Date.now() + 29 * 24 * 60 * 60 * 1000).toISOString()
+        },
+        {
+            itemName: '早餐2元代金券',
+            exchangeTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+            pointsUsed: 150,
+            status: '已完成',
+            couponCode: 'ZC20241234002',
+            validUntil: new Date(Date.now() + 27 * 24 * 60 * 60 * 1000).toISOString()
+        }
+    ];
+    
+    renderExchangeRecords();
+}
+
+// 渲染兑换记录
+function renderExchangeRecords() {
+    const exchangeRecordsContainer = getSafeElement('exchangeRecordsContainer');
+    if (!exchangeRecordsContainer) return;
+    
+    if (!exchangeRecordsData || exchangeRecordsData.length === 0) {
+        exchangeRecordsContainer.innerHTML = `
+            <div class="text-center py-8">
+                <i class="fas fa-history text-gray-400 text-3xl mb-4"></i>
+                <p class="text-gray-500">暂无兑换记录</p>
+                <p class="text-sm text-gray-400 mt-2">快去兑换优惠券吧！</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '<div class="space-y-4">';
+    
+    exchangeRecordsData.forEach(record => {
+        const statusColor = record.status === '已完成' ? 'green' : 
+                          record.status === '处理中' ? 'blue' : 'gray';
+        
+        const date = new Date(record.exchangeTime).toLocaleString('zh-CN');
+        const validDate = record.validUntil ? new Date(record.validUntil).toLocaleDateString('zh-CN') : '';
+        
+        html += `
+            <div class="bg-white rounded-lg shadow p-4">
+                <div class="flex justify-between items-start mb-3">
+                    <div class="flex-1">
+                        <h5 class="font-semibold text-gray-800">${record.itemName}</h5>
+                        <p class="text-sm text-gray-500">兑换时间: ${date}</p>
+                    </div>
+                    <span class="bg-${statusColor}-100 text-${statusColor}-800 text-xs font-semibold px-3 py-1 rounded-full">
+                        ${record.status}
+                    </span>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3 text-sm mb-3">
+                    <div class="text-gray-600">消耗积分:</div>
+                    <div class="text-red-600 font-semibold">${record.pointsUsed}</div>
+                    
+                    ${record.couponCode ? `
+                        <div class="text-gray-600">券码:</div>
+                        <div class="font-mono text-green-700 bg-green-50 px-3 py-2 rounded border border-green-200">
+                            ${record.couponCode}
+                        </div>
+                    ` : ''}
+                </div>
+                
+                ${validDate ? `
+                    <div class="flex items-center text-xs text-gray-500 border-t pt-3 mt-2">
+                        <i class="far fa-calendar-check mr-2"></i>
+                        <span>有效期至: ${validDate}</span>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    
+    exchangeRecordsContainer.innerHTML = html;
+}
+
+// 显示兑换记录（独立函数）
+function showExchangeRecords() {
+    switchExchangeTab('records');
+}
+
     </script>
 </body>
 </html>

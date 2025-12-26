@@ -13,7 +13,6 @@ import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
 import java.util.*;
-import java.io.IOException;
 
 @Service
 @Primary
@@ -241,7 +240,7 @@ public class BaiduRecognitionServiceImpl implements ImageRecognitionService {
 
             // 生成投放建议
             if (!items.isEmpty()) {
-                result.setSuggestion(generateSuggestion(items));
+                result.setSuggestion(generateConciseReminder(items));
 
                 // 设置积分（根据分类结果）
                 int points = calculatePoints(items);
@@ -355,6 +354,34 @@ public class BaiduRecognitionServiceImpl implements ImageRecognitionService {
             default:
                 return "投入其他垃圾桶";
         }
+    }
+
+    /**
+     * 生成简洁的核心提醒
+     */
+    private String generateConciseReminder(List<ImageRecognitionResult.GarbageItem> items) {
+        boolean hasHazardous = items.stream()
+                .anyMatch(item -> "有害垃圾".equals(item.getCategory()));
+
+        int totalItems = items.size();
+        long identifiedCategories = items.stream()
+                .map(ImageRecognitionResult.GarbageItem::getCategory)
+                .filter(cat -> cat != null && !"未知".equals(cat))
+                .distinct()
+                .count();
+
+        StringBuilder reminder = new StringBuilder();
+
+        if (hasHazardous) {
+            reminder.append("⚠️ 检测到有害垃圾，请务必单独处理！");
+        } else if (totalItems > 0) {
+            reminder.append("识别到 ").append(totalItems).append(" 个物品，涉及 ")
+                    .append(identifiedCategories).append(" 个分类，请分类投放。");
+        } else {
+            reminder.append("未识别到明确物品，请重新拍摄。");
+        }
+
+        return reminder.toString();
     }
 
     private boolean isPotentiallyRecyclable(String itemName) {

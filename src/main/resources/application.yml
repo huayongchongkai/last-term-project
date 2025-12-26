@@ -12,7 +12,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/smart_garbage?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
     username: root
-    password: 123456
+    password: lxt168019
     hikari:
       connection-timeout: 30000
       maximum-pool-size: 20
@@ -58,7 +58,15 @@ server:
       max: 200
       min-spare: 10
 
+# 在application.yml的smart-garbage配置后添加
 
+# 添加Swagger配置（可选）
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
 
 # 自定义配置
 smart-garbage:
@@ -74,13 +82,13 @@ smart-garbage:
     - name: 普通用户
       min-points: 0
       max-points: 100
-    - name: 铜卡用户
+    - name: 白银用户
       min-points: 100
       max-points: 500
-    - name: 银卡用户
+    - name: 黄金用户
       min-points: 500
       max-points: 1000
-    - name: 金卡用户
+    - name: 铂金用户
       min-points: 1000
       max-points: 5000
     - name: 钻石用户
@@ -95,6 +103,10 @@ smart-garbage:
       endpoint: http://localhost:8080/api/v1/mock/recognize
       api-key: mock-api-key-2024
       timeout: 5000
+
+jwt:
+  expiration: 86400000  # 24小时（单位毫秒）
+  secret: your-secret-key-here
 
 # ======================
 # 百度AI图像识别配置
@@ -115,7 +127,6 @@ baidu:
     # 请求配置
     timeout: 10000  # 10秒超时
     max-retry: 3    # 最大重试次数
-
 # 日志配置
 logging:
   level:
